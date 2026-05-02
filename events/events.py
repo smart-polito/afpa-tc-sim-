@@ -1,0 +1,3 @@
+
+class MioEvento ( Event):
+    kjdspadkfjsaòl

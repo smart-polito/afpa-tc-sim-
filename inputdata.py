@@ -1,5 +1,7 @@
 import pandas as pd
 
+from events.events import Airplane
+
 #CHECH-IN
 BANCHI_CHECKIN_TOTALI = 48        # 4 isole × 12 banchi — dato ufficiale
 BANCHI_CHECKIN_APERTI = 24        # stima media (varia con traffico)
@@ -42,6 +44,42 @@ GATE_CLOSING = 20                 # minuti prima del volo
 # TURNAROUND
 TURNAROUND_RYANAIR = 25           # minuti target Ryanair
 SLA_ATTESA_MAX_CHECKIN = 10       # minuti massimi attesa accettabili
+
+compagnie_info = {
+        "RYR": {"name": "Ryanair", "aircraft": "B737-800", "capacity": 189, "load_factor": 0.89},
+        "DLH": {"name": "Lufthansa", "aircraft": "E190/195", "capacity": 114, "load_factor": 0.83},
+        "DLA": {"name": "air dolomiti", "aircraft": "E190/195", "capacity": 114, "load_factor": 0.77},
+        "IBE": {"name": "Iberia", "aircraft": "CRJ-1000", "capacity": 100, "load_factor": 0.87},
+        "TAP": {"name": "TAP Air Portugal","aircraft": "A320/A321","capacity": 180, "load_factor": 0.82},
+        "THY": {"name": "Turkish Airlines", "aircraft": "B737-800", "capacity": 162, "load_factor": 0.84},
+        "BAW": {"name": "British Airways", "aircraft": "A320/A321", "capacity": 185, "load_factor": 0.83},
+        "WZZ": {"name": "Wizz Air", "aircraft": "A321", "capacity": 230, "load_factor": 0.85},
+        "WMT": {"name": "Volotea", "aircraft": "A319", "capacity": 156, "load_factor": 0.80},
+        "EZY": {"name": "EasyJet", "aircraft": "A320", "capacity": 180, "load_factor": 0.87},
+        "EJU": {"name": "EasyJet UK", "aircraft": "A319", "capacity": 156, "load_factor": 0.87},
+        "AUA": {"name": "Austrian Airlines","aircraft": "E195/A320","capacity": 114,"load_factor": 0.81},
+        "SAS": {"name": "Scandinavian Airlines", "aircraft": "A319/A320", "capacity": 150, "load_factor": 0.80},
+        "SWR": {"name": "Swiss International Air Lines","aircraft": "A220/A319","capacity": 125, "load_factor": 0.83},
+        "LOT": {"name": "LOT Polish Airlines", "aircraft": "E190/E195", "capacity": 110, "load_factor": 0.79},
+        "AFR": {"name": "Air France", "aircraft": "A320", "capacity": 180, "load_factor": 0.83},
+        "TUI": {"name": "TUI Airways", "aircraft": "B737-800 / B737 MAX", "capacity": 189, "load_factor": 0.89},
+        "KLM": {"name": "KLM Royal Dutch Airlines", "aircraft": "E75L/E190", "capacity": 98, "load_factor": 0.86},
+        "VOE": {"name": "Vueling", "aircraft": "A320", "capacity": 180, "load_factor": 0.85},
+        "EXS": {"name": "Jet2.com", "aircraft": "A321 / A321neo / B737-800", "capacity": 220, "load_factor": 0.85},
+        "RAM": {"name": "Royal Air Maroc", "aircraft": "B737-800 / 737 MAX 8", "capacity": 159, "load_factor": 0.82},
+        "ITY": {"name": "ITA Airways", "aircraft": "A320", "capacity": 180, "load_factor": 0.84},
+        "TOM": {"name": "Thomas Cook", "aircraft": "B737-800", "capacity": 189, "load_factor": 0.92},  # charter
+        "EXS": {"name": "Enter Air", "aircraft": "B737-800", "capacity": 189, "load_factor": 0.93},     # charter
+        "NOS": {"name": "Neos Air", "aircraft": "B737-800", "capacity": 189, "load_factor": 0.90}       # charter
+    }
+
+def dettaglio_aereo(call_sign: str) -> Airplane:
+    c = compagnie_info[call_sign]
+    return Airplane(c["name"], c["aircraft"], c["capacity"], c["load_factor"])
+
+# Distribuzione passeggeri con disabilità
+
+# Distribuzione passeggeri con biglietto online
 
 def prepara_data_simpy():
     df=pd.read_csv("csv-input/voli_LIMF_2025_scheduled_charter_realistic.csv")

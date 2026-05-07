@@ -1,16 +1,29 @@
 import dataclasses
 
 # Rappresenta un generico aereo nell'aereoporto
+import dataclasses
+
 @dataclasses.dataclass
 class Airplane:
-        name: str
-        type: str
-        capacity: int
-        load_factor: float
+    name: str
+    type: str
+    capacity: int
+    load_factor: float
+
+    def passeggeri_totali(self):
+        return int(self.capacity * self.load_factor)
 
 @dataclasses.dataclass
 class Passeggero:
-    pass
+    nome: str
+    schengen: bool
+    anziano: bool
+    bagaglio_stiva: bool
+    disabilita: bool
+    checkin_online: str    # "online_mano", "bag_drop", "banco", "kiosk"
+    gruppo: int            # 1 = singolo, 2+ = famiglia
+    tolleranza_overbooking: bool
+    volo: Airplane
 
 # Creare un evento "Decollo aereo" legato al tipo di aereo
 # Evento arrivo passeggero in aereoporto --> Accade quando un certo passeggero arriva in aereoporto, contiene le info specifiche sotto forma di istanza della classe Passeggero

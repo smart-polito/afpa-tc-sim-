@@ -32,10 +32,12 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
     anticipo = np.clip(
         stats.norm.rvs(loc=90, scale=20),
         ANTICIPO_MIN, ANTICIPO_MAX
-    )
+    )           #90 sono minuti in cui di solito si arriva prima in aeroporto e 20 è deviazione standard 
+
 
     # orario in cui il passeggero arriva in aeroporto
     orario_arrivo = orario_volo - anticipo
+
 
     # aspetta fino all'orario di arrivo
     if orario_arrivo > env.now:
@@ -43,6 +45,25 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
 
     # segna inizio percorso
     t_start = env.now
+
+
+    # ── CAMMINATA INGRESSO → CHECK-IN ───────────────
+    if pax.disabilita:
+        # disabile → molto lento, percorso assistito
+        yield env.timeout(random.uniform(7, 12))
+    elif pax.anziano:
+        # anziano → lento
+        yield env.timeout(random.uniform(5, 8))
+    elif pax.gruppo > 2:
+        # famiglia numerosa → rallentata da bambini/bagagli
+        yield env.timeout(random.uniform(4, 7))
+    elif pax.gruppo == 2:
+        # coppia → leggermente più lento del singolo
+        yield env.timeout(random.uniform(3, 5))
+    else:
+        # singolo → veloce
+        yield env.timeout(random.uniform(2, 4))
+
 
     # ── CHECK-IN ────────────────────────────────
     if pax.checkin_online == "online_mano":
@@ -72,7 +93,27 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
             tempo *= pax.gruppo   # famiglia → più lento
             yield env.timeout(tempo)
         tempi_checkin.append(env.now - t0)
+    # ── CAMMINATA CHECK-IN → SECURITY ───────────────
 
+
+    # dal documento SAGAT: area check-in → tornelli → security
+    if pax.disabilita:
+        # percorso assistito, eventuale ascensore
+        yield env.timeout(random.uniform(5, 10))
+    elif pax.anziano:
+        # lento, si orienta
+        yield env.timeout(random.uniform(4, 7))
+    elif pax.gruppo > 2:
+        # famiglia con bambini e bagagli
+        yield env.timeout(random.uniform(3, 6))
+    elif pax.gruppo == 2:
+        # coppia
+        yield env.timeout(random.uniform(2, 5))
+    else:
+        # singolo frequente — conosce già il percorso
+        yield env.timeout(random.uniform(1, 3))
+
+        
     # ── SECURITY ────────────────────────────────
     t1 = env.now
     if pax.disabilita or random.random() < PCT_FAST_TRACK:

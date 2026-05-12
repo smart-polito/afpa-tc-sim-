@@ -81,33 +81,3 @@ def prepara_data_simpy():
     df_partenze["ora"] = df_partenze["firstseen"].dt.hour
     df_partenze["giorno"] = df_partenze["firstseen"].dt.date
     return df_partenze
-
-def genera_passeggeri(volo: Airplane) -> list:
-    passeggeri = []
-    n = volo.passeggeri_totali()
-
-    for i in range(n):
-        r = random.random()
-        if r < PCT_CHECKIN_ONLINE_SOLO_MANO:
-            checkin = "online_mano"
-        elif r < PCT_CHECKIN_ONLINE_SOLO_MANO + PCT_CHECKIN_ONLINE_BAG_DROP:
-            checkin = "bag_drop"
-        elif r < PCT_CHECKIN_ONLINE_SOLO_MANO + PCT_CHECKIN_ONLINE_BAG_DROP + PCT_CHECKIN_BANCO_COMPLETO:
-            checkin = "banco"
-        else:
-            checkin = "kiosk"
-
-        p = Passeggero(
-            nome=f"PAX_{volo.name}_{i+1}",
-            schengen=random.random() < PCT_SCHENGEN,
-            anziano=random.random() < 0.10,
-            bagaglio_stiva=random.random() < 0.60,
-            disabilita=random.random() < 0.02,
-            checkin_online=checkin,
-            gruppo=random.choices([1, 2, 3, 4], weights=[0.50, 0.25, 0.15, 0.10])[0],
-            tolleranza_overbooking=random.random() < 0.30,
-            volo=volo
-        )
-        passeggeri.append(p)
-
-    return passeggeri

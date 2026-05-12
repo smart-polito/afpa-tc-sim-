@@ -5,6 +5,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import os
 from events.events import Passeggero
+from generators import spawna_voli
 from inputdata import (
     prepara_data_simpy, dettaglio_aereo, genera_passeggeri,
     compagnie_info,
@@ -17,6 +18,16 @@ from inputdata import (
     TEMPO_GATE_VICINO, TEMPO_GATE_PIANO2_DISTALE,
     ANTICIPO_MIN, ANTICIPO_MAX, GATE_CLOSING
 )
+from plotting import grafici
+
+# TODO: Estrarre tutti i dati globali in un modulo "context.py" per far sì che
+# TIP: Utilizzare la classe SimulationState implementata nel file "context.py" e passare ai diversi processi una sua istanza
+# nel main, creo un'istanza globale:
+# simulation_state = SimulationState()
+# la passo ai diversi processi nei parametri
+# def processo_fa_qualcosa(env, simulation_state, ...)
+# dentro il processo aggiorno i tempi accedendo ai suoi attributi:
+# simulation_state.tempi_totali.append(blablabla)
 
 # ── RACCOLTA DATI KPI ────────────────────────────
 tempi_totali = []
@@ -38,7 +49,6 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
     # orario in cui il passeggero arriva in aeroporto
     orario_arrivo = orario_volo - anticipo
 
-
     # aspetta fino all'orario di arrivo
     if orario_arrivo > env.now:
         yield env.timeout(orario_arrivo - env.now)
@@ -46,9 +56,8 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
     # segna inizio percorso
     t_start = env.now
 
-
     # ── CAMMINATA INGRESSO → CHECK-IN ───────────────
-    if pax.disabilita:
+    if pax.disabilita:                              # TODO: Estrarre in funzione che calcola il tempo di percorso
         # disabile → molto lento, percorso assistito
         yield env.timeout(random.uniform(7, 12))
     elif pax.anziano:
@@ -70,7 +79,7 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
         # salta il check-in fisico completamente
         tempi_checkin.append(0)
 
-    elif pax.checkin_online == "bag_drop":
+    elif pax.checkin_online == "bag_drop":          # TODO: Questo può essere estratto in un processo a parte
         # banco veloce solo per consegnare bagaglio
         t0 = env.now
         with checkin.request() as req:
@@ -83,18 +92,22 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
 
     else:
         # banco completo o kiosk — più lento
+        # TODO: Estrarre in processo a parte
         t0 = env.now
         with checkin.request() as req:
             yield req
             tempo = max(TEMPO_CHECKIN_BANCO_MIN,
                         stats.lognorm.rvs(s=0.3, scale=np.exp(1.2)))
             if pax.anziano:
-                tempo *= 1.5
-            tempo *= pax.gruppo   # famiglia → più lento
+                tempo *= 1.5            # DOMANDA: Come abbiamo stimato il rallentamento dovuto al fatto che un passeggero sia anziano?
+            tempo *= pax.gruppo   # famiglia → più lento        # TODO ERRORE: Il tempo di percorrenza di una famiglia o gruppo NON è il prodotto dei tempi di percorrenza dei singoli partecipanti
+                                    # 4 persone a camminare non ci mettono 4 volte il tempo di una persona singola
+
             yield env.timeout(tempo)
         tempi_checkin.append(env.now - t0)
-    # ── CAMMINATA CHECK-IN → SECURITY ───────────────
 
+    # ── CAMMINATA CHECK-IN → SECURITY ───────────────
+    # TODO: Estrarre in funzione che calcola il tempo di percorrenza
 
     # dal documento SAGAT: area check-in → tornelli → security
     if pax.disabilita:
@@ -115,8 +128,9 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
 
         
     # ── SECURITY ────────────────────────────────
+    # TODO: Estrarre in processo a parte "security_checks" che prende in input il passeggero
     t1 = env.now
-    if pax.disabilita or random.random() < PCT_FAST_TRACK:
+    if pax.disabilita or random.random() < PCT_FAST_TRACK:      # TODO: Errore il random.random non ha senso
         # fast track — corsia dedicata più veloce
         yield env.timeout(
             random.uniform(TEMPO_FAST_TRACK_MIN, TEMPO_FAST_TRACK_MAX)
@@ -127,15 +141,15 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
             yield req
             tempo_sec = max(0.5, stats.lognorm.rvs(s=0.4, scale=np.exp(0.8)))
             if pax.bagaglio_stiva:
-                tempo_sec *= 1.2   # bagaglio stiva → più lento
+                tempo_sec *= 1.2   # bagaglio stiva → più lento         # TODO: Come abbiamo stimato questo numero?
             yield env.timeout(tempo_sec)
     tempi_security.append(env.now - t1)
 
-    # ── BORDER CONTROL (solo extra-schengen) ────
+    # ── BORDER CONTROL (solo extra-schengen) ────      # TODO: Per ora abbiamo deciso di non gestire l'area extra shenghen
     if not pax.schengen:
-        if random.random() < PCT_EGATE:
+        if random.random() < PCT_EGATE:         # TODO: random.random non ha senso
             # e-gate biometrico — più veloce
-            yield env.timeout(random.uniform(2, 5))
+            yield env.timeout(random.uniform(2, 5))         # TODO: Come abbiamo stimato questi numeri?
         else:
             # sportello manuale — più lento
             yield env.timeout(random.uniform(
@@ -157,41 +171,6 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
     tempo_totale = env.now - t_start
     if tempo_totale > 0:
         tempi_totali.append(tempo_totale)
-
-
-# ── GENERATORE VOLI ──────────────────────────────
-def spawna_voli(env, df, checkin, security):
-
-    # ordina per orario cronologico
-    df = df.sort_values("firstseen").reset_index(drop=True)
-    t_inizio = df["firstseen"].min()
-
-    for i, row in df.iterrows():
-        airline = row["airline"]
-        if airline not in compagnie_info:
-            continue
-
-        # converti orario volo in minuti dall'inizio simulazione
-        orario_volo = (row["firstseen"] - t_inizio).total_seconds() / 60
-
-        # aspetta fino all'orario del volo
-        if orario_volo > env.now:
-            yield env.timeout(orario_volo - env.now)
-
-        # crea aereo dalla compagnia
-        aereo = dettaglio_aereo(airline)
-
-        # genera tutti i passeggeri del volo
-        passeggeri = genera_passeggeri(aereo)
-
-        # lancia processo SimPy per ogni passeggero
-        for pax in passeggeri:
-            env.process(processo_passeggero(
-                env, pax, checkin, security, orario_volo
-            ))
-        # NON c'è yield qui — passa subito al volo successivo
-        # è SimPy che gestisce i passeggeri in parallelo
-
 
 # ── CALCOLO KPI ──────────────────────────────────
 def calcola_kpi():
@@ -218,57 +197,6 @@ def calcola_kpi():
     print(f"Tempo medio check-in:     {np.mean(tempi_checkin):.1f} min")
     print(f"Tempo medio security:     {np.mean(tempi_security):.1f} min")
     print(f"95° percentile tempo:     {np.percentile(tempi_totali, 95):.1f} min")
-
-
-# ── GRAFICI ──────────────────────────────────────
-def grafici():
-    os.makedirs("output", exist_ok=True)
-
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-    fig.suptitle("Simulazione Aeroporto Torino Caselle 2025", fontsize=14)
-
-    # grafico 1 — distribuzione tempi totali
-    axes[0,0].hist(tempi_totali, bins=30, color="steelblue", edgecolor="black")
-    axes[0,0].axvline(x=45, color="red", linestyle="--", label="Target 45 min")
-    axes[0,0].set_title("Distribuzione tempi totali")
-    axes[0,0].set_xlabel("Minuti")
-    axes[0,0].set_ylabel("Passeggeri")
-    axes[0,0].legend()
-
-    # grafico 2 — distribuzione tempi check-in
-    axes[0,1].hist(tempi_checkin, bins=30, color="orange", edgecolor="black")
-    axes[0,1].axvline(x=10, color="red", linestyle="--", label="SLA 10 min")
-    axes[0,1].set_title("Distribuzione tempi check-in")
-    axes[0,1].set_xlabel("Minuti")
-    axes[0,1].set_ylabel("Passeggeri")
-    axes[0,1].legend()
-
-    # grafico 3 — distribuzione tempi security
-    axes[1,0].hist(tempi_security, bins=30, color="green", edgecolor="black")
-    axes[1,0].axvline(x=4.5, color="red", linestyle="--", label="P90 SAGAT 4.5 min")
-    axes[1,0].set_title("Distribuzione tempi security")
-    axes[1,0].set_xlabel("Minuti")
-    axes[1,0].set_ylabel("Passeggeri")
-    axes[1,0].legend()
-
-    # grafico 4 — KPI core a barre
-    kpi_labels = ["OGAR", "CF", "OF", "PFPI"]
-    ogar = sum(passeggeri_in_tempo) / len(passeggeri_in_tempo)
-    cf = np.mean(tempi_totali) / 45
-    of_ = 1.0
-    pfpi = ogar / (cf * of_) if cf > 0 else 0
-    kpi_values = [ogar, cf, of_, pfpi]
-    colori = ["green" if v >= 1 else "red" for v in kpi_values]
-    axes[1,1].bar(kpi_labels, kpi_values, color=colori, edgecolor="black")
-    axes[1,1].axhline(y=1, color="black", linestyle="--", label="Target = 1")
-    axes[1,1].set_title("KPI Core")
-    axes[1,1].legend()
-
-    plt.tight_layout()
-    plt.savefig("output/kpi_caselle_2025.png")
-    plt.show()
-    print("Grafico salvato in output/kpi_caselle_2025.png")
-
 
 # ── MAIN ─────────────────────────────────────────
 def main():
@@ -303,7 +231,7 @@ def main():
     env.run(until=durata)
 
     calcola_kpi()
-    grafici()
+    grafici()       # TODO: Passare parametro stato globale
 
 
 if __name__ == "__main__":

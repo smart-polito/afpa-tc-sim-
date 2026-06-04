@@ -11,6 +11,7 @@ class Airplane:
     load_factor: float
 
     def passeggeri_totali(self):
+        """Restituisce il numero di passeggeri totali del volo come prodotto della capacità massima per il load_factor"""
         return int(self.capacity * self.load_factor)
 
 @dataclasses.dataclass

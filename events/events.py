@@ -20,9 +20,10 @@ class Passeggero:
     anziano: bool
     bagaglio_stiva: bool
     disabilita: bool
-    checkin_online: str    # "online_mano", "bag_drop", "banco", "kiosk"
-    gruppo: int            # 1 = singolo, 2+ = famiglia
+    checkin_online: str
+    gruppo: int
     tolleranza_overbooking: bool
+    fast_track: bool        # ← nuovo
     volo: Airplane
 
 # Creare un evento "Decollo aereo" legato al tipo di aereo

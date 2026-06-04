@@ -2,6 +2,12 @@ import pandas as pd
 import random
 from events import Airplane, Passeggero
 
+# prima
+PCT_FAST_TRACK = 0.10
+
+# dopo
+PCT_FAST_TRACK = 0.06
+
 # ── CHECK-IN ─────────────────────────────────────
 BANCHI_CHECKIN_TOTALI = 48
 BANCHI_CHECKIN_APERTI = 24

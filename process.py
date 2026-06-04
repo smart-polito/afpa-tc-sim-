@@ -217,19 +217,20 @@ def processo_passeggero(env, pax, checkin, security, orario_volo):
     )
 
     # ==========================================
-    # KPI FINALI PASSEGGERO
+    # KPI FINALI PASSEGGERO (CORRETTI)
     # ==========================================
 
     tempo_totale = env.now - t_start
 
-    tempi_totali.append(
-        tempo_totale
+    # target realistico end-to-end
+    target = (
+        ANTICIPO_MAX +
+        TEMPO_GATE_PIANO2_DISTALE +
+        20   # buffer operativo (security + check-in variabilità)
     )
 
-    in_tempo = (
-        env.now <= (orario_volo - GATE_CLOSING)
-    )
+    in_tempo = tempo_totale <= target
+    passeggeri_in_tempo.append(in_tempo)
 
-    passeggeri_in_tempo.append(
-        in_tempo
-    )
+    # salva tempo totale
+    tempi_totali.append(tempo_totale)

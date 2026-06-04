@@ -1,11 +1,7 @@
-import dataclasses
-
-# TODO: Come metodi di questa classe si possono mettere tutte le funzioni che possono essere utili per calcolare tempi parziali o simili
-@dataclasses.dataclass
 class SimulationState:
-    """Rappresenta lo stato globale della simulazione con i diversi tempi di processo"""
-    tempi_totali = []
-    tempi_checkin = []
-    tempi_security = []
-    passeggeri_in_tempo = []
-    voli_puntuali = []
+    def __init__(self):
+        self.tempi_totali = []
+        self.tempi_checkin = []
+        self.tempi_security = []
+        self.passeggeri_in_tempo = []
+        self.records = []   # utile per Power BI

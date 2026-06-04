@@ -1,8 +1,5 @@
 import dataclasses
 
-# Rappresenta un generico aereo nell'aereoporto
-import dataclasses
-
 @dataclasses.dataclass
 class Airplane:
     name: str
@@ -11,7 +8,6 @@ class Airplane:
     load_factor: float
 
     def passeggeri_totali(self):
-        """Restituisce il numero di passeggeri totali del volo come prodotto della capacità massima per il load_factor"""
         return int(self.capacity * self.load_factor)
 
 @dataclasses.dataclass
@@ -21,10 +17,11 @@ class Passeggero:
     anziano: bool
     bagaglio_stiva: bool
     disabilita: bool
-    checkin_online: str
-    gruppo: int
+    checkin_online: str       # "online_mano", "bag_drop", "banco", "kiosk"
+    gruppo: int               # 1=singolo, 2=coppia, 3-4=famiglia, 5+=gruppo grande
     tolleranza_overbooking: bool
-    fast_track: bool        # ← nuovo
+    fast_track: bool          # ha acquistato fast track SAGAT
+    egate: bool               # usa e-gate biometrico (solo extra-schengen)
     volo: Airplane
 
 # Creare un evento "Decollo aereo" legato al tipo di aereo
